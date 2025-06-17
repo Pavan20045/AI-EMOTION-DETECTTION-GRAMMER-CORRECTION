@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Analysis</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            text-align: center;
+            background: radial-gradient(circle, #1b3c4b, #0a1f29);
+            color: white;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            margin: 40px auto;
+            padding: 20px;
+            background: #162a38;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(3, 206, 241, 0.3);
+        }
+        button {
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            border: none;
+            padding: 15px 25px;
+            font-size: 16px;
+            color: white;
+            cursor: pointer;
+            border-radius: 30px;
+            font-weight: bold;
+            margin: 10px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(255, 126, 95, 0.3);
+        }
+        #audioPlayer {
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Emotion Analysis</h1>
+    <p>Upload or record an audio file for emotion analysis.</p>
+
+    <div class="container">
+        <h2>Upload Audio</h2>
+        <input type="file" id="audioFile" accept="audio/*">
+    </div>
+
+    <div class="container">
+        <h2>Record Audio</h2>
+        <button id="recordButton">🎙 Start Recording</button>
+        <audio id="audioPlayer" controls></audio>
+        <a id="downloadLink" style="display: none; color:aliceblue" download="recorded_audio.wav">Download Recording</a>
+    </div>
+
+    <button id="analyzeEmotion">Analyze Emotion</button>
+    <p id="result">Prediction: <strong id="emotion"></strong></p>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob = null;
+        let isRecording = false;
+
+        document.getElementById("recordButton").addEventListener("click", async () => {
+            let recordButton = document.getElementById("recordButton");
+
+            if (!isRecording) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                audioBlob = null;
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    document.getElementById("audioPlayer").src = audioUrl;
+
+                    const downloadLink = document.getElementById("downloadLink");
+                    downloadLink.href = audioUrl;
+                    downloadLink.style.display = "block";
+                };
+
+                mediaRecorder.start();
+                recordButton.textContent = "⏹ Stop Recording";
+                isRecording = true;
+            } else {
+                mediaRecorder.stop();
+                recordButton.textContent = "🎙 Start Recording";
+                isRecording = false;
+            }
+        });
+
+        document.getElementById("analyzeEmotion").addEventListener("click", () => {
+            const fileInput = document.getElementById("audioFile");
+            const uploadedFile = fileInput.files[0];
+
+            const formData = new FormData();
+
+            if (uploadedFile) {
+                formData.append('audio_data', uploadedFile, uploadedFile.name);
+            } else if (audioBlob) {
+                formData.append('audio_data', audioBlob, 'recording.wav');
+            } else {
+                alert("Please record or upload an audio file first.");
+                return;
+            }
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('emotion').textContent = data.prediction;
+            })
+            .catch(err => {
+                console.error("Prediction failed:", err);
+                alert("Error during prediction.");
+            });
+        });
+    </script>
+
+</body>
+</html>

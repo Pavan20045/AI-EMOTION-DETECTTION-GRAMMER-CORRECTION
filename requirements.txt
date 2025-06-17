@@ -1,0 +1,6 @@
+Flask
+torch
+transformers
+librosa
+pydub
+numpy
