@@ -34,7 +34,7 @@ label_map = {
 
 @app.route('/')
 def index():
-    return render_template('index4.html')
+    return render_template('index4(main).html')
 
 @app.route('/predict', methods=['POST'])
 def predict():
